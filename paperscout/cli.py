@@ -135,5 +135,45 @@ def triples(
         render_terminal(drug, mined, db_targets, console=console)
 
 
+@app.command()
+def bench(
+    gold: Optional[str] = typer.Option(None, help="Path to a gold JSON (default: bundled set)"),
+    drug: Optional[str] = typer.Option(None, "--drug", "-d", help="Benchmark only this drug"),
+    limit: int = typer.Option(60, help="Max abstracts to mine per drug"),
+    fmt: str = typer.Option("terminal", "--format", "-f", help="terminal|md"),
+    output: Optional[str] = typer.Option(None, "--output", "-o"),
+    refresh: bool = typer.Option(False),
+    offline: bool = typer.Option(False),
+):
+    """Score the triple miner against a gold set of known drug->target->readout triples."""
+    from .bench.run import load_gold, render_markdown, render_terminal, run_benchmark
+    from .bench.score import summarize
+
+    entries = load_gold(gold)
+    if drug:
+        entries = [e for e in entries if e["drug"].lower() == drug.lower()]
+        if not entries:
+            raise typer.BadParameter(f"{drug!r} is not in the gold set.")
+
+    client = _client()
+    try:
+        results = run_benchmark(
+            client, entries, limit=limit, refresh=refresh, offline=offline,
+            console=console)
+    finally:
+        client.close()
+
+    metrics = summarize(results)
+    if fmt == "md":
+        text = render_markdown(results, metrics)
+        if output:
+            Path(output).write_text(text)
+            console.print(f"[green]Wrote[/] {output}")
+        else:
+            print(text)
+    else:
+        render_terminal(results, metrics, console=console)
+
+
 if __name__ == "__main__":
     app()
