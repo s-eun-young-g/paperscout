@@ -106,6 +106,8 @@ def triples(
     drug: str = typer.Option(..., "--drug", "-d", help="Drug or drug name"),
     readout: Optional[str] = typer.Option(None, "--readout", help="Focus one analyte, e.g. CRP"),
     limit: int = typer.Option(120, help="Max abstracts to mine"),
+    min_evidence: int = typer.Option(
+        2, "--min-evidence", help="Signed abstracts required to commit a direction"),
     fmt: str = typer.Option("terminal", "--format", "-f", help="terminal|md"),
     output: Optional[str] = typer.Option(None, "--output", "-o"),
     refresh: bool = typer.Option(False),
@@ -120,7 +122,7 @@ def triples(
         with console.status(f"Mining literature for {drug}..."):
             mined, db_targets = mine_drug(
                 client, drug, readout=readout, limit=limit,
-                refresh=refresh, offline=offline)
+                min_evidence=min_evidence, refresh=refresh, offline=offline)
     finally:
         client.close()
 
@@ -140,6 +142,8 @@ def bench(
     gold: Optional[str] = typer.Option(None, help="Path to a gold JSON (default: bundled set)"),
     drug: Optional[str] = typer.Option(None, "--drug", "-d", help="Benchmark only this drug"),
     limit: int = typer.Option(60, help="Max abstracts to mine per drug"),
+    min_evidence: int = typer.Option(
+        2, "--min-evidence", help="Signed abstracts required to commit a direction"),
     fmt: str = typer.Option("terminal", "--format", "-f", help="terminal|md"),
     output: Optional[str] = typer.Option(None, "--output", "-o"),
     refresh: bool = typer.Option(False),
@@ -158,8 +162,8 @@ def bench(
     client = _client()
     try:
         results = run_benchmark(
-            client, entries, limit=limit, refresh=refresh, offline=offline,
-            console=console)
+            client, entries, limit=limit, min_evidence=min_evidence,
+            refresh=refresh, offline=offline, console=console)
     finally:
         client.close()
 

@@ -11,12 +11,12 @@
 | readout_recall | 1.0 |
 | readouts_expected | 23 |
 | readouts_found | 23 |
-| committed | 21 |
-| abstained | 2 |
-| direction_accuracy | 0.952 |
-| wrong_direction | 1 |
-| triple_accuracy | 0.87 |
-| triples_correct | 20 |
+| committed | 19 |
+| abstained | 4 |
+| direction_accuracy | 1.0 |
+| wrong_direction | 0 |
+| triple_accuracy | 0.826 |
+| triples_correct | 19 |
 
 ## Per-triple
 
@@ -31,9 +31,9 @@
 | fenofibrate | hit | PPARA -> triglycerides | down | down | 12 | ok |
 | fenofibrate | hit | PPARA -> HDL | up | up | 4 | ok |
 | canakinumab | hit | IL1B -> CRP | down | down | 2 | ok |
-| tocilizumab | hit | IL6R -> CRP | down | down | 1 | ok |
+| tocilizumab | hit | IL6R -> CRP | down | unclear | 1 | abstain |
 | adalimumab | hit | TNF -> CRP | down | down | 2 | ok |
-| infliximab | hit | TNF -> CRP | down | up | 1 | dir |
+| infliximab | hit | TNF -> CRP | down | unclear | 1 | abstain |
 | sitagliptin | hit | DPP4 -> HbA1c | down | down | 6 | ok |
 | sitagliptin | hit | DPP4 -> glucose | down | down | 5 | ok |
 | empagliflozin | hit | SLC5A2 -> HbA1c | down | down | 12 | ok |

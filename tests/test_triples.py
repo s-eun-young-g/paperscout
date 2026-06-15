@@ -115,6 +115,16 @@ def test_min_evidence_floor_abstains():
     assert t.direction == "unclear" and t.disagreement is False  # too few, not a split
 
 
+def test_floor_of_two_needs_corroboration():
+    one = [("1", "DrugX reduced CRP in plasma.")]
+    two = [("1", "DrugX reduced CRP in plasma."),
+           ("2", "DrugX lowered CRP in serum.")]
+    t1 = [x for x in extract_triples("drugx", one, min_evidence=2) if x.readout == "CRP"][0]
+    t2 = [x for x in extract_triples("drugx", two, min_evidence=2) if x.readout == "CRP"][0]
+    assert t1.direction == "unclear"          # single paper -> abstain
+    assert t2.direction == "down"             # corroborated -> commit
+
+
 # --- 1.2 clause-scoped attribution + cohort-descriptor neutralisation ---
 
 def test_cue_attributed_to_readouts_own_clause():

@@ -27,6 +27,7 @@ def run_benchmark(
     entries: list[dict],
     *,
     limit: int = 60,
+    min_evidence: int = 2,
     refresh: bool = False,
     offline: bool = False,
     console: Optional[Console] = None,
@@ -38,7 +39,8 @@ def run_benchmark(
             console.print(f"[dim]({i}/{len(entries)}) mining {drug}...[/]")
         try:
             triples, db_targets = mine_drug(
-                client, drug, limit=limit, refresh=refresh, offline=offline)
+                client, drug, limit=limit, min_evidence=min_evidence,
+                refresh=refresh, offline=offline)
             results.append(score_drug(entry, db_targets, triples))
         except Exception as e:  # one drug failing must not sink the run
             results.append(score_drug(entry, [], [], error=f"{type(e).__name__}: {e}"))

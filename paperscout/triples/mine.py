@@ -31,13 +31,16 @@ def mine_drug(
     *,
     readout: Optional[str] = None,
     limit: int = 120,
+    min_evidence: int = 2,
     refresh: bool = False,
     offline: bool = False,
 ) -> tuple[list[Triple], list[str]]:
     """Return (triples, db_targets) for a drug.
 
     ``readout`` narrows mining to one analyte (e.g. CRP). ``db_targets`` is the
-    Open Targets mechanism-of-action target list for the drug.
+    Open Targets mechanism-of-action target list for the drug. ``min_evidence``
+    is the floor of signed abstracts required before a direction is committed
+    (default 2: never sign a prediction on a single paper).
     """
     kw = dict(refresh=refresh, offline=offline)
 
@@ -83,7 +86,7 @@ def mine_drug(
     meta = epmc.meta_map(articles)
 
     triples = extract_triples(drug, records, drug_aliases=aliases,
-                              readouts=readouts, meta=meta)
+                              readouts=readouts, meta=meta, min_evidence=min_evidence)
     # attach db targets to each triple for context
     for t in triples:
         t.targets_from_db = db_targets
