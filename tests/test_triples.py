@@ -113,3 +113,40 @@ def test_min_evidence_floor_abstains():
     t = [x for x in extract_triples("drugx", records, min_evidence=3)
          if x.readout == "CRP"][0]
     assert t.direction == "unclear" and t.disagreement is False  # too few, not a split
+
+
+# --- 1.2 clause-scoped attribution + cohort-descriptor neutralisation ---
+
+def test_cue_attributed_to_readouts_own_clause():
+    # real fenofibrate confound: "reduced" belongs to triglycerides, HDL is "increased"
+    records = [("1", "Fenofibrate reduced triglyceride levels and increased "
+                     "ApoA-I content in HDL fractions in serum.")]
+    hdl = [t for t in extract_triples("fenofibrate", records) if t.readout == "HDL"]
+    assert hdl and hdl[0].direction == "up"          # was wrongly "down" before 1.2
+
+
+def test_cue_for_other_analyte_not_borrowed():
+    # "reduced" describes macrophages, not HDL -> HDL gets no vote from this sentence
+    records = [("1", "Fenofibrate restored HDL antioxidant function in plasma and "
+                     "reduced macrophage activation.")]
+    hdl = [t for t in extract_triples("fenofibrate", records) if t.readout == "HDL"]
+    assert not hdl                                    # no directional vote -> no triple
+
+
+def test_list_reporting_preserved():
+    # comma list under one verb must still attribute "reduced" to each analyte
+    records = [("1", "Tocilizumab reduced serum CRP, IL-6 and TNF-alpha.")]
+    triples = {t.readout: t.direction for t in extract_triples("tocilizumab", records)}
+    assert triples.get("CRP") == "down" and triples.get("IL-6") == "down"
+
+
+def test_cohort_descriptor_cue_neutralised():
+    # "with elevated CRP" describes the cohort, not an effect -> no vote
+    records = [("1", "The drug was given to patients with elevated CRP in serum.")]
+    assert not [t for t in extract_triples("the drug", records) if t.readout == "CRP"]
+
+
+def test_real_effect_kept_despite_cohort_phrase():
+    records = [("1", "In patients with elevated baseline CRP, drugx reduced CRP in plasma.")]
+    crp = [t for t in extract_triples("drugx", records) if t.readout == "CRP"]
+    assert crp and crp[0].direction == "down"        # the real "reduced CRP" survives

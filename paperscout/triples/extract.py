@@ -49,6 +49,23 @@ _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
 # comparison operators like "P<0.05" / "P > 0.05" are left intact.
 _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
 
+# Split a sentence into conjuncts on coordinating boundaries so a cue is
+# attributed to the analyte in its own clause, not a neighbour. Deliberately NOT
+# splitting on commas, nor on a list-terminating ", and": that would break list
+# reporting ("decrease in NLR, PLR, SII, and CRP" / "reduced CRP, IL-6 and
+# TNF-alpha"), where one verb governs a comma-separated analyte list. Only a
+# clause-joining " and " (not preceded by a comma) is treated as a boundary.
+_CLAUSE_SPLIT = re.compile(
+    r";|\s+(?:but|whereas|while|although|whilst)\s+|(?<!,)\s+and\s+", re.I)
+
+# Cohort/baseline descriptors where a directional word characterises the study
+# population rather than the drug effect ("patients with elevated CRP",
+# "subjects with reduced X at baseline"). Neutralise the cue, keep the clause.
+_COHORT_CUE = re.compile(
+    r"\bwith\s+(?:elevated|raised|high|low|reduced|increased|decreased|impaired)\b"
+    r"|\b(?:elevated|raised|high|low|reduced|increased|decreased)\b[\w\s-]{0,30}?\bat baseline\b",
+    re.I)
+
 
 def _clean(text: str) -> str:
     """Strip inline markup (Europe PMC abstracts carry <h4>...</h4> section labels)
@@ -64,6 +81,34 @@ def _direction(sentence_lower: str) -> Optional[str]:
     up = sum(sentence_lower.count(c) for c in _UP)
     down = sum(sentence_lower.count(c) for c in _DOWN)
     if up == 0 and down == 0:
+        return None
+    if up > down:
+        return "up"
+    if down > up:
+        return "down"
+    return "changes"
+
+
+def _direction_for_readout(
+    sentence_lower: str, patterns: "tuple[str, ...]") -> Optional[str]:
+    """Direction attributed to a specific readout, counting cues only in the
+    conjunct(s) that mention it and ignoring cohort-descriptor cues.
+
+    This kills the cross-analyte confound where a cue describes a neighbouring
+    analyte ("reduced triglycerides and increased ApoA-I in HDL") or the study
+    cohort ("patients with elevated CRP"), the highest validity risk for the
+    prediction oracle.
+    """
+    up = down = 0
+    seen = False
+    for clause in _CLAUSE_SPLIT.split(sentence_lower):
+        if not _mentions(clause, patterns):
+            continue
+        seen = True
+        c = _COHORT_CUE.sub(" ", clause)
+        up += sum(c.count(x) for x in _UP)
+        down += sum(c.count(x) for x in _DOWN)
+    if not seen or (up == 0 and down == 0):
         return None
     if up > down:
         return "up"
@@ -127,7 +172,7 @@ def extract_triples(
             for readout, patterns in readouts.items():
                 if not _mentions(low, patterns):
                     continue
-                direction = _direction(low)
+                direction = _direction_for_readout(low, patterns)
                 if direction is None:
                     continue
                 ev = Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc",
