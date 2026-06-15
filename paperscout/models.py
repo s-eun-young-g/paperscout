@@ -56,6 +56,7 @@ class Evidence:
     pmid: Optional[str]
     sentence: str
     source: str
+    direction: Optional[str] = None    # sentence-level call: "up" | "down" | "changes"
     # bibliographic metadata (populated when available, e.g. from Europe PMC core)
     title: Optional[str] = None
     authors: Optional[str] = None      # raw author string, e.g. "Zhai Y, Yu Y, ..."
@@ -97,11 +98,21 @@ class Evidence:
 
 @dataclass
 class Triple:
-    """A drug -> (target) -> readout relation with a direction (up/down)."""
+    """A drug -> (target) -> readout relation, with a committed direction.
+
+    One Triple per (drug, readout). ``direction`` is the committed call after
+    tallying the per-abstract votes: "up" / "down", or "unclear" when the
+    evidence is insufficient or genuinely split (the oracle abstains rather than
+    emit a coin-flip prediction). ``n_up`` / ``n_down`` expose the raw tally and
+    ``disagreement`` flags a meaningful split.
+    """
 
     drug: str
     readout: str
-    direction: str                  # "up" | "down" | "changes"
+    direction: str                  # "up" | "down" | "unclear"
+    n_up: int = 0
+    n_down: int = 0
+    disagreement: bool = False
     target: Optional[str] = None
     evidence: list[Evidence] = field(default_factory=list)
     targets_from_db: list[str] = field(default_factory=list)  # Open Targets MoA targets
@@ -111,5 +122,18 @@ class Triple:
         return len(self.evidence)
 
     @property
+    def n_signed(self) -> int:
+        return self.n_up + self.n_down
+
+    @property
+    def votes(self) -> str:
+        return f"{self.n_up}up/{self.n_down}down"
+
+    @property
+    def committed(self) -> bool:
+        """Whether a signed (up/down) prediction was emitted."""
+        return self.direction in ("up", "down")
+
+    @property
     def key(self) -> tuple:
-        return (self.drug.lower(), self.readout.lower(), self.direction)
+        return (self.drug.lower(), self.readout.lower())

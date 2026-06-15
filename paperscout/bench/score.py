@@ -18,12 +18,34 @@ class ReadoutResult:
     readout: str
     expected_dir: str
     found: bool
-    predicted_dir: Optional[str]
+    predicted_dir: Optional[str]   # "up" | "down" | "unclear" | None (not found)
     n_evidence: int
 
     @property
+    def committed(self) -> bool:
+        """A signed prediction was emitted (not an abstention)."""
+        return self.predicted_dir in ("up", "down")
+
+    @property
+    def abstained(self) -> bool:
+        return self.found and not self.committed
+
+    @property
     def correct(self) -> bool:
-        return self.found and self.predicted_dir == self.expected_dir
+        return self.committed and self.predicted_dir == self.expected_dir
+
+    @property
+    def wrong_direction(self) -> bool:
+        """Committed a signed direction that contradicts the gold (the unsafe case)."""
+        return self.committed and self.predicted_dir != self.expected_dir
+
+    @property
+    def verdict(self) -> str:
+        if not self.found:
+            return "MISS"
+        if self.abstained:
+            return "abstain"
+        return "ok" if self.correct else "dir"
 
 
 @dataclass
@@ -44,12 +66,11 @@ class DrugResult:
 
 
 def _predicted(readout: str, triples: list[Triple]) -> tuple[Optional[str], int]:
-    """Direction of the best-supported triple for a readout, and its evidence count."""
-    matches = [t for t in triples if t.readout.lower() == readout.lower()]
-    if not matches:
-        return None, 0
-    best = max(matches, key=lambda t: t.n_evidence)
-    return best.direction, best.n_evidence
+    """Committed direction for a readout (one triple per readout) and evidence count."""
+    for t in triples:
+        if t.readout.lower() == readout.lower():
+            return t.direction, t.n_evidence
+    return None, 0
 
 
 def score_drug(entry: dict, db_targets: list[str], triples: list[Triple],
@@ -75,17 +96,24 @@ def score_drug(entry: dict, db_targets: list[str], triples: list[Triple],
 def summarize(results: list[DrugResult]) -> dict:
     """Aggregate metrics across drugs.
 
-    - target_accuracy: of drugs with an expected target, fraction whose Open Targets
-      MoA list contains it.
+    For a prediction oracle the key safety metric is wrong_direction (a committed
+    sign that contradicts the gold); abstentions are safe, not errors.
+
+    - target_accuracy: of drugs with an expected target, fraction Open Targets hits.
     - readout_recall: fraction of expected readouts the miner found at all.
-    - direction_accuracy: of readouts found, fraction with the correct direction.
-    - triple_accuracy: fraction of expected readouts found AND directionally correct
-      (the end-to-end number).
+    - direction_accuracy: of readouts where a signed direction was COMMITTED,
+      fraction correct (abstentions excluded from the denominator).
+    - abstained: count of found readouts the oracle declined to sign.
+    - wrong_direction: count of committed signs that contradict the gold.
+    - triple_accuracy: fraction of expected readouts found AND correctly signed.
     """
     targets = [r.target_hit for r in results if r.target_hit is not None]
     readouts = [rr for r in results for rr in r.readouts]
     found = [rr for rr in readouts if rr.found]
-    correct = [rr for rr in found if rr.correct]
+    committed = [rr for rr in found if rr.committed]
+    correct = [rr for rr in committed if rr.correct]
+    wrong = [rr for rr in committed if rr.wrong_direction]
+    abstained = [rr for rr in found if rr.abstained]
 
     def frac(num: int, den: int) -> Optional[float]:
         return round(num / den, 3) if den else None
@@ -98,7 +126,10 @@ def summarize(results: list[DrugResult]) -> dict:
         "readout_recall": frac(len(found), len(readouts)),
         "readouts_expected": len(readouts),
         "readouts_found": len(found),
-        "direction_accuracy": frac(len(correct), len(found)),
+        "committed": len(committed),
+        "abstained": len(abstained),
+        "direction_accuracy": frac(len(correct), len(committed)),
+        "wrong_direction": len(wrong),
         "triple_accuracy": frac(len(correct), len(readouts)),
         "triples_correct": len(correct),
     }

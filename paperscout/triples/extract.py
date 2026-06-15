@@ -45,13 +45,13 @@ _DOWN = ("decreas", "reduc", "lower", "suppress", "downregulat", "down-regulat",
          "inhibit", "attenuat", "declin")
 
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
-# Match real HTML tags only — require a letter (or /) after '<' so statistical
+# Match real HTML tags only: require a letter (or /) after '<' so statistical
 # comparison operators like "P<0.05" / "P > 0.05" are left intact.
 _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
 
 
 def _clean(text: str) -> str:
-    """Strip inline markup (Europe PMC abstracts carry <h4>…</h4> section labels)
+    """Strip inline markup (Europe PMC abstracts carry <h4>...</h4> section labels)
     and collapse whitespace, so evidence quotes are clean prose."""
     return re.sub(r"\s+", " ", _TAG.sub(" ", text)).strip()
 
@@ -76,6 +76,26 @@ def _mentions(text_lower: str, patterns: Iterable[str]) -> bool:
     return any(p in text_lower for p in patterns)
 
 
+def commit_direction(n_up: int, n_down: int, *, unanimity_threshold: float = 0.25,
+                     min_evidence: int = 1) -> tuple[str, bool]:
+    """Decide a triple's committed direction from its vote tally.
+
+    Returns (direction, disagreement). Abstain ("unclear") rather than emit a
+    coin-flip: commit a signed direction only when there are at least
+    ``min_evidence`` signed votes AND the minority fraction is within
+    ``unanimity_threshold``. A split above the threshold sets disagreement=True
+    and abstains (the damaging confident-wrong-direction case the oracle must
+    avoid). Too few votes also abstains, but is not flagged as disagreement.
+    """
+    signed = n_up + n_down
+    if signed < min_evidence or signed == 0:
+        return "unclear", False
+    minority = min(n_up, n_down)
+    if minority / signed > unanimity_threshold:
+        return "unclear", True
+    return ("up" if n_up >= n_down else "down"), False
+
+
 def extract_triples(
     drug: str,
     records: list[tuple[Optional[str], str]],
@@ -83,18 +103,21 @@ def extract_triples(
     drug_aliases: Iterable[str] = (),
     readouts: Optional[dict[str, tuple[str, ...]]] = None,
     meta: Optional[dict[str, dict]] = None,
+    unanimity_threshold: float = 0.25,
+    min_evidence: int = 1,
 ) -> list[Triple]:
-    """Aggregate (drug, readout, direction) candidates with evidence over abstracts.
+    """Aggregate one (drug -> readout) triple per readout, with a direction vote.
 
-    ``meta`` maps pmid -> bibliographic fields (title/authors/journal/year/url/doi/
-    cited_by/is_review); when present, each Evidence is enriched so the report can
-    cite a real paper and link to the source instead of a bare PMID.
+    Each supporting abstract sentence casts an up/down vote; the committed
+    direction is decided by ``commit_direction`` (abstain on insufficient or
+    split evidence). ``meta`` maps pmid -> bibliographic fields so each Evidence
+    can cite a real paper and link to the source.
     """
     readouts = readouts or READOUTS
     meta = meta or {}
     drug_terms = [drug.lower(), *[a.lower() for a in drug_aliases]]
-    # (readout, direction) -> list[Evidence]
-    buckets: dict[tuple[str, str], list[Evidence]] = defaultdict(list)
+    # readout -> list[Evidence] (each Evidence carries its own sentence direction)
+    buckets: dict[str, list[Evidence]] = defaultdict(list)
 
     for pmid, text in records:
         for sent in _sentences(_clean(text)):
@@ -107,7 +130,8 @@ def extract_triples(
                 direction = _direction(low)
                 if direction is None:
                     continue
-                ev = Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc")
+                ev = Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc",
+                              direction=direction)
                 m = meta.get(str(pmid)) if pmid is not None else None
                 if m:
                     ev.title = m.get("title")
@@ -118,13 +142,20 @@ def extract_triples(
                     ev.doi = m.get("doi")
                     ev.cited_by = m.get("cited_by") or 0
                     ev.is_review = bool(m.get("is_review"))
-                buckets[(readout, direction)].append(ev)
+                buckets[readout].append(ev)
 
-    # most authoritative evidence first (reviews, then citation count) so the
-    # report surfaces the canonical paper rather than an arbitrary abstract.
     triples = []
-    for (readout, direction), ev in buckets.items():
+    for readout, ev in buckets.items():
+        n_up = sum(1 for e in ev if e.direction == "up")
+        n_down = sum(1 for e in ev if e.direction == "down")
+        direction, disagreement = commit_direction(
+            n_up, n_down, unanimity_threshold=unanimity_threshold,
+            min_evidence=min_evidence)
+        # most authoritative evidence first (reviews, then citation count)
         ev.sort(key=lambda e: (e.is_review, e.cited_by), reverse=True)
-        triples.append(Triple(drug=drug, readout=readout, direction=direction, evidence=ev))
-    triples.sort(key=lambda t: -t.n_evidence)
+        triples.append(Triple(drug=drug, readout=readout, direction=direction,
+                              n_up=n_up, n_down=n_down, disagreement=disagreement,
+                              evidence=ev))
+    # surface the best-supported relations first
+    triples.sort(key=lambda t: (t.committed, t.n_evidence), reverse=True)
     return triples

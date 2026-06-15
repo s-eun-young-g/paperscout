@@ -6,8 +6,11 @@ from paperscout.models import Triple
 
 
 def _t(drug, readout, direction, n):
+    # n_evidence is len(evidence); for scoring, only direction + count matter here
+    nd = n if direction == "down" else 0
+    nu = n if direction == "up" else 0
     return Triple(drug=drug, readout=readout, direction=direction,
-                  evidence=[None] * n)  # n_evidence only counts length
+                  n_up=nu, n_down=nd, evidence=[None] * n)
 
 
 def test_target_hit_case_insensitive():
@@ -41,12 +44,15 @@ def test_readout_direction_and_recall():
     assert by["HDL"].found is False
 
 
-def test_predicted_uses_highest_evidence():
-    # conflicting directions for one readout -> the better-supported one wins
+def test_abstain_is_not_a_direction_error():
     entry = {"drug": "d", "target": None, "readouts": [{"readout": "LDL", "direction": "down"}]}
-    triples = [_t("d", "LDL", "up", 1), _t("d", "LDL", "down", 9)]
-    r = score_drug(entry, [], triples)
-    assert r.readouts[0].predicted_dir == "down" and r.readouts[0].correct
+    unclear = Triple(drug="d", readout="LDL", direction="unclear",
+                     n_up=2, n_down=2, disagreement=True, evidence=[None] * 4)
+    rr = score_drug(entry, [], [unclear]).readouts[0]
+    assert rr.found is True
+    assert rr.abstained is True and rr.committed is False
+    assert rr.correct is False and rr.wrong_direction is False  # safe, not an error
+    assert rr.verdict == "abstain"
 
 
 def test_summarize_aggregates():
@@ -64,7 +70,9 @@ def test_summarize_aggregates():
     assert m["targets_evaluated"] == 2 and m["target_accuracy"] == 0.5
     assert m["readouts_expected"] == 3 and m["readouts_found"] == 2
     assert m["readout_recall"] == round(2 / 3, 3)
-    assert m["direction_accuracy"] == 0.5      # 1 correct of 2 found
+    assert m["committed"] == 2 and m["abstained"] == 0
+    assert m["wrong_direction"] == 1           # drug b committed up against gold down
+    assert m["direction_accuracy"] == 0.5      # 1 correct of 2 committed
     assert m["triple_accuracy"] == round(1 / 3, 3)
 
 

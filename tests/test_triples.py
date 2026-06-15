@@ -1,6 +1,6 @@
 """Tests for triple direction extraction (no network)."""
 
-from paperscout.triples.extract import extract_triples
+from paperscout.triples.extract import commit_direction, extract_triples
 
 
 def test_direction_down():
@@ -33,7 +33,7 @@ def test_no_direction_cue_skipped():
 
 
 def test_html_stripped_from_quote():
-    # Europe PMC abstracts carry <h4>…</h4> section labels; quotes must be clean prose.
+    # Europe PMC abstracts carry <h4>...</h4> section labels; quotes must be clean prose.
     records = [("666", "<h4>Results</h4>Rosuvastatin reduced LDL cholesterol in plasma.")]
     triples = extract_triples("rosuvastatin", records)
     ldl = [t for t in triples if t.readout == "LDL"]
@@ -66,3 +66,50 @@ def test_evidence_sorted_by_authority():
     triples = extract_triples("rosuvastatin", records, meta=meta)
     ldl = [t for t in triples if t.readout == "LDL"][0]
     assert ldl.evidence[0].pmid == "high"  # review / most-cited floats to the top
+
+
+# --- 1.1 direction-vote tally + abstain policy ---
+
+def test_commit_direction_policy():
+    assert commit_direction(4, 0) == ("up", False)                       # unanimous up
+    assert commit_direction(0, 4) == ("down", False)                     # unanimous down
+    assert commit_direction(4, 1) == ("up", False)                       # minority 0.2 <= 0.25
+    assert commit_direction(2, 2) == ("unclear", True)                   # tie -> abstain+flag
+    assert commit_direction(3, 2) == ("unclear", True)                   # 0.4 split -> abstain
+    assert commit_direction(0, 0) == ("unclear", False)                  # no signal, not a split
+    assert commit_direction(0, 1, min_evidence=3) == ("unclear", False)  # below floor
+
+
+def test_one_triple_per_readout_with_votes():
+    records = [
+        ("1", "DrugX increased CRP in plasma."),
+        ("2", "DrugX reduced CRP in serum."),
+        ("3", "DrugX reduced CRP levels in blood."),
+        ("4", "DrugX lowered CRP in plasma."),
+    ]
+    triples = [t for t in extract_triples("drugx", records) if t.readout == "CRP"]
+    assert len(triples) == 1                      # collapsed to one triple per readout
+    t = triples[0]
+    assert (t.n_up, t.n_down) == (1, 3)
+    assert t.direction == "down" and t.disagreement is False  # minority 0.25, committed
+    assert t.n_evidence == 4
+
+
+def test_split_evidence_abstains_and_flags():
+    records = [
+        ("1", "DrugX increased CRP in plasma."),
+        ("2", "DrugX elevated CRP in serum."),
+        ("3", "DrugX reduced CRP in blood."),
+        ("4", "DrugX lowered CRP in plasma."),
+    ]
+    t = [x for x in extract_triples("drugx", records) if x.readout == "CRP"][0]
+    assert (t.n_up, t.n_down) == (2, 2)
+    assert t.direction == "unclear" and t.disagreement is True
+    assert t.committed is False
+
+
+def test_min_evidence_floor_abstains():
+    records = [("1", "DrugX reduced CRP in plasma.")]
+    t = [x for x in extract_triples("drugx", records, min_evidence=3)
+         if x.readout == "CRP"][0]
+    assert t.direction == "unclear" and t.disagreement is False  # too few, not a split

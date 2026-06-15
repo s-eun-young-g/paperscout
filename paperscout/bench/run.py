@@ -52,9 +52,8 @@ def _rows(results: list[DrugResult]) -> list[tuple]:
             "hit" if r.target_hit else "MISS")
         for rr in r.readouts:
             pred = rr.predicted_dir or "-"
-            verdict = "ok" if rr.correct else ("dir" if rr.found else "MISS")
             rows.append((r.drug, tgt, f"{r.expected_target or '-'} -> {rr.readout}",
-                         rr.expected_dir, pred, str(rr.n_evidence), verdict,
+                         rr.expected_dir, pred, str(rr.n_evidence), rr.verdict,
                          r.error or ""))
     return rows
 
@@ -66,7 +65,8 @@ def render_terminal(results: list[DrugResult], metrics: dict,
     for c in ("Drug", "Target", "Triple", "Exp", "Pred", "Evid", "Verdict"):
         table.add_column(c)
     for drug, tgt, triple, exp, pred, evid, verdict, err in _rows(results):
-        color = {"ok": "green", "dir": "yellow", "MISS": "red"}.get(verdict, "white")
+        color = {"ok": "green", "dir": "red", "abstain": "yellow",
+                 "MISS": "red"}.get(verdict, "white")
         table.add_row(drug, tgt, triple, exp, pred, evid,
                       f"[{color}]{verdict}[/]")
     console.print(table)
