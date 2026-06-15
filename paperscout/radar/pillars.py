@@ -1,8 +1,8 @@
-"""Research-interest "pillars" — the radar's notion of what counts as relevant.
+"""Research-interest "pillars", the radar's notion of what counts as relevant.
 
 paperscout ships a **generic example set** (broad ML areas) so the tool is runnable
 out of the box. To tune it to *your* research program, point it at your own pillar
-file instead of editing this one — keep that file out of version control:
+file instead of editing this one, keep that file out of version control:
 
     export PAPERSCOUT_PILLARS=~/.config/paperscout/pillars.local.json
     # or: paperscout radar --pillars pillars.local.json -q "..."

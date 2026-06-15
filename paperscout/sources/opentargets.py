@@ -1,7 +1,7 @@
-"""Open Targets adapter — drug → mechanism-of-action targets (GraphQL, no key).
+"""Open Targets adapter, drug -> mechanism-of-action targets (GraphQL, no key).
 
 Provides the database-grounded target(s) for a drug, anchoring the middle node of a
-drug → target → readout triple.
+drug -> target -> readout triple.
 """
 
 from __future__ import annotations

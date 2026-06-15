@@ -11,9 +11,9 @@ from rich.console import Console
 from ..models import ScoredPaper
 
 _TIER_LABEL = {
-    1: "TIER 1 — Highest priority (same problem / load-bearing)",
-    2: "TIER 2 — Relevant (clear connection to a pillar)",
-    3: "TIER 3 — Peripheral (one weaker match)",
+    1: "TIER 1, Highest priority (same problem / load-bearing)",
+    2: "TIER 2, Relevant (clear connection to a pillar)",
+    3: "TIER 3, Peripheral (one weaker match)",
 }
 
 
@@ -23,7 +23,7 @@ def _authors_str(sp: ScoredPaper, n: int = 4) -> str:
     s = ", ".join(names)
     if extra > 0:
         s += f" (+{extra})"
-    return s or "—"
+    return s or "-"
 
 
 def _context(sp: ScoredPaper) -> str:
@@ -34,11 +34,11 @@ def _context(sp: ScoredPaper) -> str:
         bits.append(sp.paper.venue)
     if sp.paper.year:
         bits.append(str(sp.paper.year))
-    return " · ".join(bits)
+    return ", ".join(bits)
 
 
 def render_markdown(title: str, scored: list[ScoredPaper], min_tier: int = 3) -> str:
-    out = [f"# {title}", "", f"*{len(scored)} matched papers (showing tiers 1–{min_tier})*", ""]
+    out = [f"# {title}", "", f"*{len(scored)} matched papers (showing tiers 1-{min_tier})*", ""]
     for tier in (1, 2, 3):
         if tier > min_tier:
             break
@@ -53,7 +53,7 @@ def render_markdown(title: str, scored: list[ScoredPaper], min_tier: int = 3) ->
             ctx = _context(sp)
             if ctx:
                 out.append(f"*{ctx}*  ")
-            out.append(f"{sp.reason} · score {sp.score}")
+            out.append(f"{sp.reason}, score {sp.score}")
             if sp.paper.url:
                 out.append(f"  \n<{sp.paper.url}>")
             out.append("")
@@ -77,7 +77,7 @@ def render_terminal(title: str, scored: list[ScoredPaper], min_tier: int = 3,
             ctx = _context(sp)
             if ctx:
                 console.print(f"  {ctx}", style="dim")
-            console.print(f"  [green]{sp.reason}[/] · score {sp.score}")
+            console.print(f"  [green]{sp.reason}[/], score {sp.score}")
             if sp.paper.url:
                 console.print(f"  [blue underline]{sp.paper.url}[/]")
             console.print()

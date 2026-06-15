@@ -7,13 +7,13 @@ from rich.table import Table
 
 from ..models import Triple
 
-_ARROW = {"up": "↑", "down": "↓", "changes": "↕"}
+_ARROW = {"up": "up", "down": "down", "changes": "changes"}
 
 
 def _headline(drug: str, triples: list[Triple], db_targets: list[str]) -> str:
     tline = f"targets (Open Targets): {', '.join(db_targets)}" if db_targets else \
         "no database targets found"
-    return f"{drug}: {len(triples)} candidate readout relations · {tline}"
+    return f"{drug}: {len(triples)} candidate readout relations, {tline}"
 
 
 def render_terminal(drug: str, triples: list[Triple], db_targets: list[str],
@@ -21,14 +21,14 @@ def render_terminal(drug: str, triples: list[Triple], db_targets: list[str],
     console = console or Console()
     console.print(f"\n[bold cyan]{_headline(drug, triples, db_targets)}[/]\n")
     if not triples:
-        console.print("[yellow]No directional drug→readout statements found.[/]")
+        console.print("[yellow]No directional drug->readout statements found.[/]")
         return
     table = Table(header_style="bold magenta", box=None)
     for c in ("Triple", "Dir", "Evidence", "Target(s)"):
         table.add_column(c)
     for t in triples:
-        table.add_row(f"{t.drug} → {t.readout}", _ARROW.get(t.direction, t.direction),
-                      str(t.n_evidence), t.target or "—")
+        table.add_row(f"{t.drug} -> {t.readout}", _ARROW.get(t.direction, t.direction),
+                      str(t.n_evidence), t.target or "-")
     console.print(table)
     console.print("\n[dim]Top evidence sentences:[/]")
     for t in triples[:8]:
@@ -44,13 +44,13 @@ def render_markdown(drug: str, triples: list[Triple], db_targets: list[str],
     out += ["| Triple | Direction | Evidence | Target(s) |",
             "| --- | --- | --- | --- |"]
     for t in triples:
-        out.append(f"| {t.drug} → {t.readout} | {_ARROW.get(t.direction, t.direction)} "
-                   f"| {t.n_evidence} | {t.target or '—'} |")
+        out.append(f"| {t.drug} -> {t.readout} | {_ARROW.get(t.direction, t.direction)} "
+                   f"| {t.n_evidence} | {t.target or '-'} |")
     out.append("")
     out.append("## Evidence")
     out.append("")
     for t in triples:
-        out.append(f"### {t.drug} → {t.readout} ({t.direction})")
+        out.append(f"### {t.drug} -> {t.readout} ({t.direction})")
         for ev in t.evidence[:max_evidence]:
             pmid = (f"[PMID:{ev.pmid}](https://pubmed.ncbi.nlm.nih.gov/{ev.pmid}/)"
                     if ev.pmid else ev.source)

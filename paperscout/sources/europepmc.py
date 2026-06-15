@@ -1,4 +1,4 @@
-"""Europe PMC adapter — abstracts/sentences for biomedical relation mining (no key)."""
+"""Europe PMC adapter, abstracts/sentences for biomedical relation mining (no key)."""
 
 from __future__ import annotations
 

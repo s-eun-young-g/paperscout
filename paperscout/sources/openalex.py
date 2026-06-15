@@ -1,4 +1,4 @@
-"""OpenAlex adapter — the field-agnostic backbone (no API key needed).
+"""OpenAlex adapter, the field-agnostic backbone (no API key needed).
 
 Used by the radar to pull papers by topic query or by venue+year, with abstracts
 (reconstructed from OpenAlex's inverted index) and authoritative author

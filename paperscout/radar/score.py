@@ -111,7 +111,7 @@ def _reason(matched) -> str:
     others = [pl.key for pl, _, _ in matched[1:3]]
     if others:
         parts.append("also " + ", ".join(others))
-    return " · ".join(parts)
+    return ", ".join(parts)
 
 
 def _quantile(sorted_vals: list[float], q: float) -> float:

@@ -1,4 +1,4 @@
-"""Sentence-level extraction of drug → readout direction from abstracts.
+"""Sentence-level extraction of drug -> readout direction from abstracts.
 
 Deliberately simple and transparent (no ML model needed): find sentences that
 co-mention the drug and a plasma readout, then classify the direction from lexical
@@ -37,7 +37,7 @@ READOUTS: dict[str, tuple[str, ...]] = {
     "albumin": ("serum albumin", "albumin"),
 }
 
-# Only unambiguous morphological stems — comparative words like "higher"/"greater"
+# Only unambiguous morphological stems, comparative words like "higher"/"greater"
 # and direction-ambiguous ones like "improve"/"normalize" are deliberately excluded
 # to keep precision high (a noisy cue flips the aggregated direction).
 _UP = ("increas", "elevat", "upregulat", "up-regulat", "induc", "augment")

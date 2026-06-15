@@ -1,4 +1,4 @@
-"""OpenReview adapter (best-effort) for venues that publish there (ICLR, NeurIPS…).
+"""OpenReview adapter (best-effort) for venues that publish there (ICLR, NeurIPS...).
 
 Pass an OpenReview ``venueid`` such as ``ICLR.cc/2024/Conference``. Accepted papers
 carry that as ``content.venueid``. OpenReview's schema shifts between venues, so this

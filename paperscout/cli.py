@@ -58,12 +58,12 @@ def radar(
             papers = paperfile.load(file)
             label = f"file:{Path(file).name}"
         elif openreview:
-            with console.status(f"Fetching OpenReview {openreview}…"):
+            with console.status(f"Fetching OpenReview {openreview}..."):
                 papers = OpenReview(client).venue_papers(
                     openreview, limit=limit, refresh=refresh, offline=offline)
             label = openreview
         else:
-            with console.status("Querying OpenAlex…"):
+            with console.status("Querying OpenAlex..."):
                 papers = OpenAlex(client, settings.mailto).search(
                     query, venue=venue, year=year, limit=limit,
                     refresh=refresh, offline=offline)
@@ -75,7 +75,7 @@ def radar(
 
         if enrich:
             oa = OpenAlex(client, settings.mailto)
-            with console.status("Enriching affiliations…"):
+            with console.status("Enriching affiliations..."):
                 for p in papers:
                     a = p.first_author
                     if a and not a.affiliation:
@@ -88,7 +88,7 @@ def radar(
         client.close()
 
     scored = score_papers(papers, load_pillars(pillars))
-    title = f"paperscout radar — {label}"
+    title = f"paperscout radar, {label}"
     if fmt == "md":
         text = render_markdown(title, scored, min_tier=min_tier)
         if output:
@@ -111,13 +111,13 @@ def triples(
     refresh: bool = typer.Option(False),
     offline: bool = typer.Option(False),
 ):
-    """Mine drug → target → readout relations (with direction) from the literature."""
+    """Mine drug -> target -> readout relations (with direction) from the literature."""
     from .triples.mine import mine_drug
     from .triples.report import render_markdown, render_terminal
 
     client = _client()
     try:
-        with console.status(f"Mining literature for {drug}…"):
+        with console.status(f"Mining literature for {drug}..."):
             mined, db_targets = mine_drug(
                 client, drug, readout=readout, limit=limit,
                 refresh=refresh, offline=offline)

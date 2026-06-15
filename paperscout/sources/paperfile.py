@@ -1,7 +1,7 @@
 """Ingest papers from a local CSV or JSON dump.
 
 This is the adapter for upcoming conferences (e.g. ICML 2026) whose accepted lists
-aren't indexed by OpenAlex yet — feed the scraped/exported dump directly.
+aren't indexed by OpenAlex yet, feed the scraped/exported dump directly.
 
 CSV: columns ``title``, ``abstract``, and ``authors`` (authors separated by ``;``,
 each optionally ``Name (Affiliation)``).
