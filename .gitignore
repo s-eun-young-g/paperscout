@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+
+# paperscout runtime
+*.sqlite
+*.sqlite3
+.cache/
+out/
+
+# private research-pillar configs (keep your real interests off the repo)
+*.local.json
+pillars.local.json
+pillars.private.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
