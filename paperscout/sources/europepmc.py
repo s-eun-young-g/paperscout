@@ -41,3 +41,48 @@ class EuropePMC:
             if abs:
                 out.append((a.get("pmid") or a.get("id"), abs))
         return out
+
+    @staticmethod
+    def _best_url(article: dict) -> Optional[str]:
+        """Prefer an open-access full-text link, falling back to the PMC article page."""
+        urls = ((article.get("fullTextUrlList") or {}).get("fullTextUrl")) or []
+
+        def rank(u: dict) -> int:
+            score = 0
+            if u.get("availabilityCode") == "OA":
+                score += 2
+            if u.get("site") in ("Europe_PMC", "PubMedCentral"):
+                score += 1
+            return score
+
+        if urls:
+            best = max(urls, key=rank)
+            if best.get("url"):
+                return best["url"]
+        pmcid = article.get("pmcid")
+        if pmcid:
+            return f"https://europepmc.org/article/PMC/{pmcid}"
+        return None
+
+    @staticmethod
+    def meta_map(articles: list[dict]) -> dict[str, dict]:
+        """pmid -> bibliographic metadata, for enriching extracted evidence."""
+        out: dict[str, dict] = {}
+        for a in articles:
+            pmid = a.get("pmid") or a.get("id")
+            if not pmid:
+                continue
+            ji = a.get("journalInfo") or {}
+            journal = (ji.get("journal") or {})
+            types = [str(t).lower() for t in (a.get("pubTypeList") or {}).get("pubType", [])]
+            out[str(pmid)] = {
+                "title": a.get("title"),
+                "authors": a.get("authorString"),
+                "journal": journal.get("medlineAbbreviation") or journal.get("title"),
+                "year": a.get("pubYear") or ji.get("yearOfPublication"),
+                "url": EuropePMC._best_url(a),
+                "doi": a.get("doi"),
+                "cited_by": a.get("citedByCount") or 0,
+                "is_review": any("review" in t for t in types),
+            }
+        return out

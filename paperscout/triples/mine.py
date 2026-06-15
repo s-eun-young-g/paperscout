@@ -55,8 +55,9 @@ def mine_drug(
     epmc = EuropePMC(client)
     articles = epmc.search(query, limit=limit, **kw)
     records = epmc.to_records(articles)
+    meta = epmc.meta_map(articles)
 
-    triples = extract_triples(drug, records, readouts=readouts)
+    triples = extract_triples(drug, records, readouts=readouts, meta=meta)
     # attach db targets to each triple for context
     for t in triples:
         t.targets_from_db = db_targets

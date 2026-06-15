@@ -33,9 +33,8 @@ def render_terminal(drug: str, triples: list[Triple], db_targets: list[str],
     console.print("\n[dim]Top evidence sentences:[/]")
     for t in triples[:8]:
         ev = t.evidence[0]
-        pmid = f"PMID:{ev.pmid}" if ev.pmid else ev.source
-        console.print(f"  [bold]{t.readout} {_ARROW.get(t.direction,'')}[/] ({pmid}) "
-                      f"{ev.sentence[:200]}")
+        console.print(f"  [bold]{t.readout} {_ARROW.get(t.direction,'')}[/] "
+                      f"([italic]{ev.citation}[/]) {ev.sentence[:200]}")
 
 
 def render_markdown(drug: str, triples: list[Triple], db_targets: list[str],
@@ -52,8 +51,9 @@ def render_markdown(drug: str, triples: list[Triple], db_targets: list[str],
     for t in triples:
         out.append(f"### {t.drug} -> {t.readout} ({t.direction})")
         for ev in t.evidence[:max_evidence]:
-            pmid = (f"[PMID:{ev.pmid}](https://pubmed.ncbi.nlm.nih.gov/{ev.pmid}/)"
-                    if ev.pmid else ev.source)
-            out.append(f"- {pmid}: {ev.sentence}")
+            link = ev.link
+            label = f"[{ev.citation}]({link})" if link else ev.citation
+            title = f" - *{ev.title}*" if ev.title else ""
+            out.append(f'- {label}{title}: "{ev.sentence}"')
         out.append("")
     return "\n".join(out).rstrip() + "\n"

@@ -56,6 +56,43 @@ class Evidence:
     pmid: Optional[str]
     sentence: str
     source: str
+    # bibliographic metadata (populated when available, e.g. from Europe PMC core)
+    title: Optional[str] = None
+    authors: Optional[str] = None      # raw author string, e.g. "Zhai Y, Yu Y, ..."
+    journal: Optional[str] = None      # short journal abbreviation
+    year: Optional[str] = None
+    url: Optional[str] = None          # best full-text / source link
+    doi: Optional[str] = None
+    cited_by: int = 0
+    is_review: bool = False
+
+    @property
+    def first_author(self) -> Optional[str]:
+        if not self.authors:
+            return None
+        return self.authors.split(",")[0].strip().rstrip(".") or None
+
+    @property
+    def citation(self) -> str:
+        """Short human citation, e.g. 'Zhai Y et al., Cancer Immunol Immunother 2026'."""
+        fa = self.first_author
+        author = (f"{fa} et al." if "," in (self.authors or "") else fa) if fa else None
+        venue = " ".join(p for p in (self.journal, str(self.year) if self.year else None) if p)
+        parts = [p for p in (author, venue) if p]
+        if parts:
+            return ", ".join(parts)
+        return f"PMID:{self.pmid}" if self.pmid else self.source
+
+    @property
+    def link(self) -> Optional[str]:
+        """Best click-through URL: source full text, else PubMed, else DOI."""
+        if self.url:
+            return self.url
+        if self.pmid:
+            return f"https://pubmed.ncbi.nlm.nih.gov/{self.pmid}/"
+        if self.doi:
+            return f"https://doi.org/{self.doi}"
+        return None
 
 
 @dataclass

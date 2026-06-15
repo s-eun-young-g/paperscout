@@ -45,6 +45,15 @@ _DOWN = ("decreas", "reduc", "lower", "suppress", "downregulat", "down-regulat",
          "inhibit", "attenuat", "declin")
 
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+# Match real HTML tags only — require a letter (or /) after '<' so statistical
+# comparison operators like "P<0.05" / "P > 0.05" are left intact.
+_TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+
+
+def _clean(text: str) -> str:
+    """Strip inline markup (Europe PMC abstracts carry <h4>…</h4> section labels)
+    and collapse whitespace, so evidence quotes are clean prose."""
+    return re.sub(r"\s+", " ", _TAG.sub(" ", text)).strip()
 
 
 def _sentences(text: str) -> list[str]:
@@ -73,15 +82,22 @@ def extract_triples(
     *,
     drug_aliases: Iterable[str] = (),
     readouts: Optional[dict[str, tuple[str, ...]]] = None,
+    meta: Optional[dict[str, dict]] = None,
 ) -> list[Triple]:
-    """Aggregate (drug, readout, direction) candidates with evidence over abstracts."""
+    """Aggregate (drug, readout, direction) candidates with evidence over abstracts.
+
+    ``meta`` maps pmid -> bibliographic fields (title/authors/journal/year/url/doi/
+    cited_by/is_review); when present, each Evidence is enriched so the report can
+    cite a real paper and link to the source instead of a bare PMID.
+    """
     readouts = readouts or READOUTS
+    meta = meta or {}
     drug_terms = [drug.lower(), *[a.lower() for a in drug_aliases]]
     # (readout, direction) -> list[Evidence]
     buckets: dict[tuple[str, str], list[Evidence]] = defaultdict(list)
 
     for pmid, text in records:
-        for sent in _sentences(text):
+        for sent in _sentences(_clean(text)):
             low = sent.lower()
             if not any(d in low for d in drug_terms):
                 continue
@@ -91,12 +107,24 @@ def extract_triples(
                 direction = _direction(low)
                 if direction is None:
                     continue
-                buckets[(readout, direction)].append(
-                    Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc"))
+                ev = Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc")
+                m = meta.get(str(pmid)) if pmid is not None else None
+                if m:
+                    ev.title = m.get("title")
+                    ev.authors = m.get("authors")
+                    ev.journal = m.get("journal")
+                    ev.year = m.get("year")
+                    ev.url = m.get("url")
+                    ev.doi = m.get("doi")
+                    ev.cited_by = m.get("cited_by") or 0
+                    ev.is_review = bool(m.get("is_review"))
+                buckets[(readout, direction)].append(ev)
 
-    triples = [
-        Triple(drug=drug, readout=readout, direction=direction, evidence=ev)
-        for (readout, direction), ev in buckets.items()
-    ]
+    # most authoritative evidence first (reviews, then citation count) so the
+    # report surfaces the canonical paper rather than an arbitrary abstract.
+    triples = []
+    for (readout, direction), ev in buckets.items():
+        ev.sort(key=lambda e: (e.is_review, e.cited_by), reverse=True)
+        triples.append(Triple(drug=drug, readout=readout, direction=direction, evidence=ev))
     triples.sort(key=lambda t: -t.n_evidence)
     return triples
