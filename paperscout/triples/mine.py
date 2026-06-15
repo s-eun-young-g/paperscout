@@ -27,12 +27,12 @@ def mine_drug(
     """
     kw = dict(refresh=refresh, offline=offline)
 
-    # 1. database-grounded targets (the triple's middle node)
+    # 1. database-grounded targets (the triple's middle node) + drug aliases
     ot = OpenTargets(client)
     try:
-        db_targets = ot.moa_targets(drug, **kw)
+        db_targets, aliases = ot.moa(drug, **kw)
     except Exception:
-        db_targets = []
+        db_targets, aliases = [], []
 
     # 2. literature abstracts mentioning the drug + plasma/serum readouts
     readouts = None
@@ -50,14 +50,16 @@ def mine_drug(
                       "OR IGF OR testosterone OR estradiol OR proteome")
     if readout:
         analyte_clause = readout
-    query = f'("{drug}") AND ({analyte_clause}) AND (plasma OR serum OR blood)'
+    drug_clause = " OR ".join(f'"{d}"' for d in (drug, *aliases))
+    query = f'({drug_clause}) AND ({analyte_clause}) AND (plasma OR serum OR blood)'
 
     epmc = EuropePMC(client)
     articles = epmc.search(query, limit=limit, **kw)
     records = epmc.to_records(articles)
     meta = epmc.meta_map(articles)
 
-    triples = extract_triples(drug, records, readouts=readouts, meta=meta)
+    triples = extract_triples(drug, records, drug_aliases=aliases,
+                              readouts=readouts, meta=meta)
     # attach db targets to each triple for context
     for t in triples:
         t.targets_from_db = db_targets
