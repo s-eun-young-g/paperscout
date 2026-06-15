@@ -11,6 +11,20 @@ from ..sources.opentargets import OpenTargets
 from .extract import READOUTS, extract_triples
 
 
+def _analyte_clause(key: str, patterns: tuple[str, ...]) -> str:
+    """Build a focused OR clause for one readout from its display name + patterns.
+
+    ASCII-only and length-filtered so the Europe PMC query stays well-formed and
+    does not match on noise like the 2-char 'lh'.
+    """
+    terms = {key, *patterns}
+    quoted = sorted(
+        {f'"{t.strip()}"' for t in terms
+         if len(t.strip()) > 2 and t.isascii()},
+        key=len, reverse=True)
+    return " OR ".join(quoted)
+
+
 def mine_drug(
     client: Client,
     drug: str,
@@ -46,15 +60,25 @@ def mine_drug(
             pats = (readout.lower(),)
         readouts = {key: pats}
 
-    analyte_clause = ("CRP OR interleukin OR cholesterol OR HbA1c OR glucose OR SHBG "
-                      "OR IGF OR testosterone OR estradiol OR proteome")
-    if readout:
-        analyte_clause = readout
-    drug_clause = " OR ".join(f'"{d}"' for d in (drug, *aliases))
-    query = f'({drug_clause}) AND ({analyte_clause}) AND (plasma OR serum OR blood)'
-
+    # Retrieve per-readout so each analyte gets its own abstract budget. A single
+    # broad "CRP OR interleukin OR ..." disjunction lets common analytes crowd out
+    # the rarer ones within the top-N (e.g. biologics -> CRP went unfound), so we
+    # issue one focused query per readout and merge (deduped by pmid).
     epmc = EuropePMC(client)
-    articles = epmc.search(query, limit=limit, **kw)
+    drug_clause = " OR ".join(f'"{d}"' for d in (drug, *aliases))
+    targets = readouts or READOUTS
+    per_readout = min(limit, 30) if not readout else limit
+
+    articles_by_pmid: dict = {}
+    for key, patterns in targets.items():
+        clause = _analyte_clause(key, patterns)
+        if not clause:
+            continue
+        query = f'({drug_clause}) AND ({clause}) AND (plasma OR serum OR blood)'
+        for a in epmc.search(query, limit=per_readout, **kw):
+            articles_by_pmid[a.get("pmid") or a.get("id")] = a
+
+    articles = list(articles_by_pmid.values())
     records = epmc.to_records(articles)
     meta = epmc.meta_map(articles)
 
