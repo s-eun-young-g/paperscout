@@ -51,6 +51,18 @@ READOUTS: dict[str, tuple[str, ...]] = {
     "sCD163": ("scd163", "soluble cd163", "cd163"),                                    # macrophage sub-factor
     "RANKL": ("rankl", "rank ligand",
               "receptor activator of nuclear factor kappa-b ligand"),                  # TNF-superfamily
+    # --- 2.2 Tier-B: push the thin manifold factors (PC2/PC3/neutrophil/macrophage/
+    # TNF-superfamily) toward breadth >= 3. Full names lead; bare ambiguous short
+    # complement symbols (c3/c5) deliberately omitted for precision.
+    "complement C3": ("complement c3", "complement component 3"),                      # PC3 complement
+    "complement C5": ("complement c5", "complement component 5"),                      # PC3 complement
+    "myeloperoxidase": ("myeloperoxidase", "mpo"),                                     # neutrophil
+    "NGAL": ("ngal", "lipocalin-2", "lipocalin 2",
+             "neutrophil gelatinase-associated lipocalin"),                            # neutrophil
+    "YKL-40": ("ykl-40", "chi3l1", "chitinase-3-like protein 1"),                      # macrophage
+    "sCD14": ("soluble cd14", "scd14", "cd14"),                                        # macrophage
+    "sCD40L": ("soluble cd40 ligand", "scd40l", "cd40 ligand", "cd40l"),               # PC2 platelet
+    "osteoprotegerin": ("osteoprotegerin", "tnfrsf11b", "opg"),                        # TNF-superfamily
 }
 
 # Only unambiguous morphological stems, comparative words like "higher"/"greater"
