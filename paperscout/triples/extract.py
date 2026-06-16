@@ -35,6 +35,22 @@ READOUTS: dict[str, tuple[str, ...]] = {
     "fibrinogen": ("fibrinogen",),
     "ferritin": ("ferritin",),
     "albumin": ("serum albumin", "albumin"),
+    # --- 2.2 readout-vocab expansion: Olink-panel secreted proteins, prioritized by manifold factor.
+    # Lead with full names; avoid bare ambiguous short symbols (see vocab_expansion_spec.md s3).
+    "adiponectin": ("adiponectin", "adipoq"),                                          # PC4 metabolic
+    "leptin": ("leptin",),                                                             # PC4 metabolic
+    "PCSK9": ("pcsk9", "proprotein convertase subtilisin/kexin type 9",
+              "proprotein convertase subtilisin kexin 9"),                             # LDL axis
+    "GDF15": ("gdf15", "gdf-15", "growth differentiation factor 15",
+              "growth/differentiation factor 15"),                                     # TNF-superfamily/stress
+    "cystatin C": ("cystatin c", "cystatin-c", "cst3"),                                # PC1/renal
+    "PAI-1": ("pai-1", "plasminogen activator inhibitor-1",
+              "plasminogen activator inhibitor 1"),                                    # PC2 platelet/GF
+    "MMP-9": ("mmp-9", "mmp9", "matrix metalloproteinase-9",
+              "matrix metalloproteinase 9", "gelatinase b"),                           # neutrophil sub-factor
+    "sCD163": ("scd163", "soluble cd163", "cd163"),                                    # macrophage sub-factor
+    "RANKL": ("rankl", "rank ligand",
+              "receptor activator of nuclear factor kappa-b ligand"),                  # TNF-superfamily
 }
 
 # Only unambiguous morphological stems, comparative words like "higher"/"greater"

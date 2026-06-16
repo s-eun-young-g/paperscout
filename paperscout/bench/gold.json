@@ -2,7 +2,7 @@
   "description": "Gold drug -> target -> readout triples with well-established directions, for benchmarking paperscout triple mining. Generic, textbook pharmacology only. 'target' is the Open Targets approved gene symbol (null where the drug has no single clean MoA target). Directions refer to the plasma/serum readout change on treatment.",
   "triples": [
     {"drug": "rosuvastatin", "target": "HMGCR", "readouts": [{"readout": "LDL", "direction": "down"}, {"readout": "CRP", "direction": "down"}]},
-    {"drug": "atorvastatin", "target": "HMGCR", "readouts": [{"readout": "LDL", "direction": "down"}]},
+    {"drug": "atorvastatin", "target": "HMGCR", "readouts": [{"readout": "LDL", "direction": "down"}, {"readout": "PCSK9", "direction": "up"}, {"readout": "MMP-9", "direction": "down"}]},
     {"drug": "evolocumab", "target": "PCSK9", "readouts": [{"readout": "LDL", "direction": "down"}]},
     {"drug": "alirocumab", "target": "PCSK9", "readouts": [{"readout": "LDL", "direction": "down"}]},
     {"drug": "ezetimibe", "target": "NPC1L1", "readouts": [{"readout": "LDL", "direction": "down"}]},
@@ -17,7 +17,8 @@
     {"drug": "liraglutide", "target": "GLP1R", "readouts": [{"readout": "HbA1c", "direction": "down"}]},
     {"drug": "semaglutide", "target": "GLP1R", "readouts": [{"readout": "HbA1c", "direction": "down"}]},
     {"drug": "anastrozole", "target": "CYP19A1", "readouts": [{"readout": "estradiol", "direction": "down"}]},
-    {"drug": "metformin", "target": null, "readouts": [{"readout": "glucose", "direction": "down"}, {"readout": "HbA1c", "direction": "down"}]},
+    {"drug": "metformin", "target": null, "readouts": [{"readout": "glucose", "direction": "down"}, {"readout": "HbA1c", "direction": "down"}, {"readout": "GDF15", "direction": "up"}]},
+    {"drug": "pioglitazone", "target": "PPARG", "readouts": [{"readout": "adiponectin", "direction": "up"}, {"readout": "PAI-1", "direction": "down"}]},
     {"drug": "somatropin", "target": "GHR", "readouts": [{"readout": "IGF-1", "direction": "up"}]}
   ]
 }
