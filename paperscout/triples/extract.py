@@ -56,7 +56,10 @@ READOUTS: dict[str, tuple[str, ...]] = {
 # Only unambiguous morphological stems, comparative words like "higher"/"greater"
 # and direction-ambiguous ones like "improve"/"normalize" are deliberately excluded
 # to keep precision high (a noisy cue flips the aggregated direction).
-_UP = ("increas", "elevat", "upregulat", "up-regulat", "induc", "augment")
+# "induc" deliberately excluded: it matches non-directional "X-induced" phrasing
+# ("stasis-induced", "exercise-induced") far more than a real "induced an increase",
+# and a genuine increase is already caught by "increas".
+_UP = ("increas", "elevat", "upregulat", "up-regulat", "augment")
 _DOWN = ("decreas", "reduc", "lower", "suppress", "downregulat", "down-regulat",
          "inhibit", "attenuat", "declin")
 
@@ -82,6 +85,15 @@ _COHORT_CUE = re.compile(
     r"|\b(?:elevated|raised|high|low|reduced|increased|decreased)\b[\w\s-]{0,30}?\bat baseline\b",
     re.I)
 
+# A clause that has its own explicit trial-arm / agent subject (e.g. "gemfibrozil
+# therapy increased ...", "the placebo group"). Used only to detect a COMPARATOR
+# clause: when the queried drug is absent from such a clause, its cue belongs to the
+# other agent, not the queried drug. Deliberately narrow - matching merely "lacks the
+# drug name" is too aggressive (it strips the drug's own effect when the drug is the
+# subject of a sibling clause, as in "growth hormone ... consequent elevation of IGF-1").
+_COMPARATOR_SUBJECT = re.compile(
+    r"\b(?:therapy|treatment|administration|regimen|infusion|supplementation|group|arm)\b", re.I)
+
 
 def _clean(text: str) -> str:
     """Strip inline markup (Europe PMC abstracts carry <h4>...</h4> section labels)
@@ -106,19 +118,34 @@ def _direction(sentence_lower: str) -> Optional[str]:
 
 
 def _direction_for_readout(
-    sentence_lower: str, patterns: "tuple[str, ...]") -> Optional[str]:
+    sentence_lower: str, patterns: "tuple[str, ...]",
+    drug_terms: "Iterable[str]" = ()) -> Optional[str]:
     """Direction attributed to a specific readout, counting cues only in the
     conjunct(s) that mention it and ignoring cohort-descriptor cues.
 
-    This kills the cross-analyte confound where a cue describes a neighbouring
-    analyte ("reduced triglycerides and increased ApoA-I in HDL") or the study
-    cohort ("patients with elevated CRP"), the highest validity risk for the
-    prediction oracle.
+    This kills two confounds, the highest validity risk for the prediction oracle:
+    - cross-analyte: a cue describing a neighbouring analyte ("reduced triglycerides
+      and increased ApoA-I in HDL"), handled by per-clause attribution.
+    - cross-drug: a comparator drug's cue in a comparative sentence ("ciprofibrate
+      reduced and gemfibrozil increased fibrinogen"). When ``drug_terms`` is given and
+      the queried drug is named in the sentence but NOT in this readout-bearing clause,
+      the clause belongs to a different subject, so its cue is not attributed here.
     """
+    drug_terms = list(drug_terms)
+    clauses = _CLAUSE_SPLIT.split(sentence_lower)
+    drug_in_a_clause = bool(drug_terms) and any(_mentions(c, drug_terms) for c in clauses)
     up = down = 0
     seen = False
-    for clause in _CLAUSE_SPLIT.split(sentence_lower):
+    for clause in clauses:
         if not _mentions(clause, patterns):
+            continue
+        # cross-drug gate: skip a readout clause only when it is a COMPARATOR clause -
+        # i.e. it has its own trial-arm subject but does NOT name the queried drug,
+        # while the queried drug is named in some other clause. This drops
+        # "...and gemfibrozil therapy increased fibrinogen" without dropping the drug's
+        # own effect phrased subject-less ("consequent elevation of IGF-1").
+        if (drug_in_a_clause and not _mentions(clause, drug_terms)
+                and _COMPARATOR_SUBJECT.search(clause)):
             continue
         seen = True
         c = _COHORT_CUE.sub(" ", clause)
@@ -188,7 +215,7 @@ def extract_triples(
             for readout, patterns in readouts.items():
                 if not _mentions(low, patterns):
                     continue
-                direction = _direction_for_readout(low, patterns)
+                direction = _direction_for_readout(low, patterns, drug_terms)
                 if direction is None:
                     continue
                 ev = Evidence(pmid=pmid, sentence=sent.strip(), source="europepmc",

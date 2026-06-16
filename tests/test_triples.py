@@ -160,3 +160,29 @@ def test_real_effect_kept_despite_cohort_phrase():
     records = [("1", "In patients with elevated baseline CRP, drugx reduced CRP in plasma.")]
     crp = [t for t in extract_triples("drugx", records) if t.readout == "CRP"]
     assert crp and crp[0].direction == "down"        # the real "reduced CRP" survives
+
+
+def test_comparator_drug_cue_not_borrowed():
+    # comparative trial sentence: the "increased" belongs to the comparator's own
+    # trial arm ("gemfibrozil therapy"), not to the queried drug -> must not flip the sign.
+    records = [("1", "Ciprofibrate reduced plasma fibrinogen, whereas gemfibrozil "
+                     "therapy increased serum fibrinogen.")]
+    fib = [t for t in extract_triples("ciprofibrate", records) if t.readout == "fibrinogen"]
+    assert fib and fib[0].direction == "down"        # gemfibrozil's "increased" not borrowed
+
+
+def test_subjectless_own_effect_still_counted():
+    # the drug's own effect phrased subject-less in a sibling clause (no competing
+    # trial-arm subject) must still be attributed -> guards against over-aggressive gating.
+    records = [("1", "Growth hormone was administered and markedly elevated "
+                     "insulin-like growth factor 1 in serum.")]
+    igf = [t for t in extract_triples("growth hormone", records) if t.readout == "IGF-1"]
+    assert igf and igf[0].direction == "up"
+
+
+def test_induced_not_a_direction_cue():
+    # "stasis-induced" / "exercise-induced" must not register as an up cue.
+    records = [("1", "Drugx was tested in a stasis-induced venous thrombosis model "
+                     "measuring plasma fibrinogen.")]
+    fib = [t for t in extract_triples("drugx", records) if t.readout == "fibrinogen"]
+    assert not fib                                    # no real directional vote
