@@ -31,6 +31,8 @@ class Settings:
     min_request_interval: float = float(os.environ.get("PAPERSCOUT_RATE", "0.4"))
     cache_ttl_hours: float = float(os.environ.get("PAPERSCOUT_TTL_HOURS", "168"))  # 1 week
     request_timeout: float = float(os.environ.get("PAPERSCOUT_TIMEOUT", "45"))
+    max_retries: int = int(os.environ.get("PAPERSCOUT_MAX_RETRIES", "4"))
+    retry_backoff: float = float(os.environ.get("PAPERSCOUT_RETRY_BACKOFF", "1.0"))  # base secs, doubled per attempt
     anthropic_key: str | None = os.environ.get("ANTHROPIC_API_KEY") or None
 
     @property
