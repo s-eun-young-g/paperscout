@@ -14,6 +14,7 @@ from collections import defaultdict
 from typing import Iterable, Optional
 
 from ..models import Evidence, Triple
+from .confidence import score_triple
 
 # Common plasma/serum readouts (extend freely). Each maps display -> match patterns.
 READOUTS: dict[str, tuple[str, ...]] = {
@@ -253,9 +254,12 @@ def extract_triples(
             min_evidence=min_evidence)
         # most authoritative evidence first (reviews, then citation count)
         ev.sort(key=lambda e: (e.is_review, e.cited_by), reverse=True)
-        triples.append(Triple(drug=drug, readout=readout, direction=direction,
-                              n_up=n_up, n_down=n_down, disagreement=disagreement,
-                              evidence=ev))
+        t = Triple(drug=drug, readout=readout, direction=direction,
+                   n_up=n_up, n_down=n_down, disagreement=disagreement, evidence=ev)
+        # Confidence is computed strictly after the direction is committed above,
+        # so it can never influence the sign or the abstain decision.
+        t.confidence = score_triple(t)
+        triples.append(t)
     # surface the best-supported relations first
     triples.sort(key=lambda t: (t.committed, t.n_evidence), reverse=True)
     return triples

@@ -116,6 +116,11 @@ class Triple:
     target: Optional[str] = None
     evidence: list[Evidence] = field(default_factory=list)
     targets_from_db: list[str] = field(default_factory=list)  # Open Targets MoA targets
+    # Calibrated confidence for the committed prediction, attached after sign
+    # generation. Read-only: it never changes ``direction`` or the firewall.
+    # Type is paperscout.triples.confidence.ConfidenceBreakdown (forward ref to
+    # avoid a circular import; annotations are strings under future-annotations).
+    confidence: Optional["ConfidenceBreakdown"] = None  # noqa: F821
 
     @property
     def n_evidence(self) -> int:
