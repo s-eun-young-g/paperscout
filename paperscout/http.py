@@ -54,7 +54,10 @@ class Client:
         return resp.json()
 
     def post_json(self, url: str, payload: dict, *,
-                  refresh: bool = False, offline: bool = False) -> Any:
+                  refresh: bool = False, offline: bool = False,
+                  headers: Optional[dict] = None) -> Any:
+        # Cache key is url+payload only: per-call headers (e.g. an API key) carry no
+        # response semantics, so they must not fragment or leak into the cache.
         key = "POST " + url + " " + json.dumps(payload, sort_keys=True)
         if not refresh:
             cached = self.cache.get(key, self._cache_window(refresh, offline))
@@ -63,7 +66,7 @@ class Client:
         if offline:
             raise RuntimeError(f"No cached copy for {key} and offline mode is on.")
         self._throttle()
-        resp = self._http.post(url, json=payload)
+        resp = self._http.post(url, json=payload, headers=headers)
         self._last = time.time()
         resp.raise_for_status()
         self.cache.put(key, resp.text)

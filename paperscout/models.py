@@ -7,9 +7,29 @@ from typing import Optional
 
 
 @dataclass
+class Institution:
+    """A normalized affiliation with the stable ids downstream joins need."""
+
+    name: str
+    id: Optional[str] = None        # OpenAlex institution id (https://openalex.org/I...)
+    ror: Optional[str] = None       # ROR id
+    country: Optional[str] = None   # ISO 2-letter country code
+    type: Optional[str] = None      # education | healthcare | company | ...
+
+
+@dataclass
 class Author:
     name: str
-    affiliation: Optional[str] = None
+    affiliation: Optional[str] = None            # primary institution display name (back-compat)
+    author_id: Optional[str] = None              # OpenAlex author id, the stable join key
+    orcid: Optional[str] = None
+    position: Optional[str] = None               # "first" | "middle" | "last"
+    is_corresponding: bool = False
+    institutions: list[Institution] = field(default_factory=list)
+
+    @property
+    def primary_institution(self) -> Optional[Institution]:
+        return self.institutions[0] if self.institutions else None
 
 
 @dataclass
@@ -25,6 +45,8 @@ class Paper:
     doi: Optional[str] = None
     source: Optional[str] = None  # which adapter produced it
     citations: Optional[int] = None
+    openalex_id: Optional[str] = None                  # the work id
+    topics: list[str] = field(default_factory=list)    # OpenAlex topic display names
 
     @property
     def text(self) -> str:
@@ -33,6 +55,18 @@ class Paper:
     @property
     def first_author(self) -> Optional[Author]:
         return self.authors[0] if self.authors else None
+
+    @property
+    def last_author(self) -> Optional[Author]:
+        """Senior-author proxy: the one tagged position 'last', else the last listed."""
+        for a in self.authors:
+            if a.position == "last":
+                return a
+        return self.authors[-1] if self.authors else None
+
+    @property
+    def corresponding_authors(self) -> list[Author]:
+        return [a for a in self.authors if a.is_corresponding]
 
     @property
     def lead_affiliation(self) -> Optional[str]:

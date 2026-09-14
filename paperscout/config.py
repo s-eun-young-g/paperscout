@@ -32,6 +32,7 @@ class Settings:
     cache_ttl_hours: float = float(os.environ.get("PAPERSCOUT_TTL_HOURS", "168"))  # 1 week
     request_timeout: float = float(os.environ.get("PAPERSCOUT_TIMEOUT", "45"))
     anthropic_key: str | None = os.environ.get("ANTHROPIC_API_KEY") or None
+    exa_key: str | None = os.environ.get("EXA_API_KEY") or None
 
     @property
     def db_path(self) -> Path:
